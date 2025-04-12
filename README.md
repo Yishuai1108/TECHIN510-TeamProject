@@ -36,6 +36,6 @@ MoodTune is designed for:
  
 
 ## Contact Information of the Team
-**Developer & Designer**: Ningbo Li (ningbo@uw.edu)
+**Developer & Designer**: Ningbo Li (ningbo@uw.edu)  
 **Client**: Yishuai Zheng (yishuaiz@uw.edu)
 
