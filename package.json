@@ -1,0 +1,14 @@
+{
+  "name": "techin510-teamproject",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "moodtune"
+  ],
+  "scripts": {
+    "dev": "cd moodtune && npm run dev",
+    "build": "cd moodtune && npm run build",
+    "start": "cd moodtune && npm run start",
+    "lint": "cd moodtune && npm run lint"
+  }
+} 
