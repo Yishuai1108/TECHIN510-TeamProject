@@ -6,8 +6,8 @@ import Navbar from "@/components/layout/Navbar";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "MoodTune - 情绪音乐推荐",
-  description: "基于情绪的智能音乐推荐系统",
+  title: "MoodTune",
+  description: "Emotion-based music recommendation system",
 };
 
 export default function RootLayout({
@@ -16,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh">
+    <html lang="en">
       <body className={inter.className}>
         <Navbar />
         {children}

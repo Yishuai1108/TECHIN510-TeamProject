@@ -5,7 +5,7 @@ import { MusicalNoteIcon, FaceSmileIcon, ChartBarIcon } from '@heroicons/react/2
 export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24 bg-gradient-to-b from-indigo-50 to-white">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
+      <div className="z-10 max-w-5xl w-full flex justify-center">
         <h1 className="text-4xl font-bold text-center mb-8 text-indigo-900">
           Welcome to MoodTune
         </h1>
