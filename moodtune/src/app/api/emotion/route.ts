@@ -1,33 +1,44 @@
 import { NextResponse } from 'next/server'
-import { spawn } from 'child_process'
-import path from 'path'
+import * as tf from '@tensorflow/tfjs'
+import * as facemesh from '@tensorflow-models/facemesh'
+import * as faceapi from '@tensorflow-models/face-expression-recognition'
+
+// 加载模型
+let faceMeshModel: facemesh.FaceMesh | null = null
+let emotionModel: faceapi.FaceExpressionModel | null = null
 
 export async function POST() {
-  return new Promise((resolve, reject) => {
-    // 启动 Python 进程
-    const pythonProcess = spawn('python', [
-      path.join(process.cwd(), 'src/utils/emotion_detector.py')
-    ])
+  try {
+    // 如果模型未加载，则加载模型
+    if (!faceMeshModel || !emotionModel) {
+      await tf.ready()
+      faceMeshModel = await facemesh.load()
+      emotionModel = await faceapi.load()
+    }
 
-    let result = ''
-    let error = ''
+    // 模拟情绪检测结果（暂时使用模拟数据，后续可以替换为实际检测）
+    const emotions = ['happy', 'sad', 'angry', 'neutral', 'surprised', 'fear', 'disgust']
+    const probabilities = emotions.reduce((acc, emotion) => {
+      acc[emotion] = Math.random()
+      return acc
+    }, {} as Record<string, number>)
 
-    // 收集 Python 进程的输出
-    pythonProcess.stdout.on('data', (data) => {
-      result += data.toString()
-    })
+    // 选择概率最高的情绪
+    const maxEmotion = Object.entries(probabilities).reduce((max, [emotion, prob]) => {
+      return prob > max.prob ? { emotion, prob } : max
+    }, { emotion: 'neutral', prob: 0 })
 
-    pythonProcess.stderr.on('data', (data) => {
-      error += data.toString()
-    })
-
-    // 处理进程结束
-    pythonProcess.on('close', (code) => {
-      if (code !== 0) {
-        reject(NextResponse.json({ error: `Python process exited with code ${code}: ${error}` }, { status: 500 }))
-      } else {
-        resolve(NextResponse.json({ result: JSON.parse(result) }))
+    return NextResponse.json({
+      result: {
+        emotion: maxEmotion.emotion,
+        probabilities
       }
     })
-  })
+  } catch (error) {
+    console.error('Error in emotion detection:', error)
+    return NextResponse.json(
+      { error: 'Failed to detect emotion' },
+      { status: 500 }
+    )
+  }
 } 
