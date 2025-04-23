@@ -14,6 +14,8 @@ import {
 } from '@heroicons/react/24/outline'
 import { MusicRecommendationService } from '@/services/musicRecommendation'
 import { MusicTrack } from '@/types/music'
+import { useSession } from 'next-auth/react'
+import SpotifyLogin from '@/components/SpotifyLogin'
 
 declare global {
   interface Window {
@@ -22,6 +24,7 @@ declare global {
 }
 
 export default function Dashboard() {
+  const { data: session, status } = useSession();
   const [isDetecting, setIsDetecting] = useState(false)
   const [currentEmotion, setCurrentEmotion] = useState<string>('Not Detected')
   const [recommendations, setRecommendations] = useState<MusicTrack[]>([])
@@ -185,7 +188,6 @@ export default function Dashboard() {
     }
 
     loadFaceApi()
-    musicService.current = new MusicRecommendationService()
 
     return () => {
       console.log('Component unmounting')
@@ -195,14 +197,22 @@ export default function Dashboard() {
     }
   }, [])
 
+  // 初始化音乐推荐服务
+  useEffect(() => {
+    if (session?.accessToken) {
+      musicService.current = new MusicRecommendationService(session.accessToken);
+    }
+  }, [session]);
+
   // 更新检测状态
   const updateDetectionStatus = (status: string) => {
     setDetectionStatus(status)
     console.log('Detection Status:', status)
   }
 
+  // 更新情绪检测函数
   const detectEmotion = async () => {
-    if (!isDetectingRef.current || !videoRef.current || !canvasRef.current) {
+    if (!isDetectingRef.current || !videoRef.current || !canvasRef.current || !isFaceApiReady) {
       console.log('Detection stopped or elements not ready');
       return;
     }
@@ -211,7 +221,7 @@ export default function Dashboard() {
     const samplingElapsed = now - samplingStartTime.current;
 
     try {
-      // 确保在每次循环中都更新进度
+      // 更新进度
       if (samplingElapsed < SAMPLING_DURATION) {
         const progress = Math.min(100, Math.round((samplingElapsed / SAMPLING_DURATION) * 100));
         updateDetectionStatus(`Analyzing... ${progress}%`);
@@ -226,82 +236,45 @@ export default function Dashboard() {
           setIsAnalysisComplete(true);
           
           // 获取音乐推荐
-          try {
-            const tracks = await musicService.current?.getRecommendations(dominantEmotion);
-            setRecommendations(tracks || []);
-          } catch (error) {
-            console.error('Error getting recommendations:', error);
+          if (musicService.current && session?.accessToken) {
+            try {
+              console.log('Fetching recommendations for emotion:', dominantEmotion);
+              const recommendations = await musicService.current.getRecommendations(dominantEmotion);
+              console.log('Recommendations received:', recommendations);
+              setRecommendations(recommendations);
+            } catch (error) {
+              console.error('Error getting recommendations:', error);
+              setError('Failed to get music recommendations. Please try again.');
+            }
+          } else {
+            console.error('Music service or access token not available');
+            setError('Spotify connection not available. Please log in again.');
           }
-
+          
           // 分析完成后自动停止检测
           stopDetection();
           return;
         }
       }
 
-      // 设置画布尺寸
-      if (videoRef.current.videoWidth && videoRef.current.videoHeight) {
-        canvasRef.current.width = videoRef.current.videoWidth;
-        canvasRef.current.height = videoRef.current.videoHeight;
-      }
-
-      // 将视频帧绘制到画布
-      const ctx = canvasRef.current.getContext('2d');
-      if (!ctx) {
-        throw new Error('Failed to get canvas context');
-      }
-      
-      ctx.drawImage(videoRef.current, 0, 0);
-
-      // 使用画布进行检测
       const detections = await window.faceapi.detectSingleFace(
-        canvasRef.current,
+        videoRef.current,
         new window.faceapi.TinyFaceDetectorOptions()
       ).withFaceLandmarks().withFaceExpressions();
 
-      if (detections && detections.expressions) {
+      if (detections) {
         const expressions = detections.expressions as Record<string, number>;
-        console.log('Raw expressions:', expressions);
+        const emotion = Object.entries(expressions)
+          .reduce((a, b) => a[1] > b[1] ? a : b)[0];
 
-        const emotionMap: { [key: string]: string } = {
-          happy: 'happy',
-          sad: 'sad',
-          angry: 'angry',
-          surprised: 'surprised',
-          fearful: 'fearful',
-          disgusted: 'disgusted',
-          neutral: 'neutral'
-        };
-
-        let maxEmotion = '';
-        let maxValue = 0;
-
-        for (const [emotion, value] of Object.entries(expressions)) {
-          if (value > maxValue) {
-            maxValue = value;
-            maxEmotion = emotion;
-          }
+        if (expressions[emotion] > 0.3) {
+          updateEmotionHistory(emotion);
         }
-
-        if (maxEmotion && maxValue > 0.3) {
-          const mappedEmotion = emotionMap[maxEmotion] || 'neutral';
-          updateEmotionHistory(mappedEmotion);
-        } else {
-          updateEmotionHistory('neutral');
-        }
-      } else {
-        updateEmotionHistory('neutral');
       }
-    } catch (error: any) {
-      console.error('Error in detectEmotion:', error);
-      // 即使发生错误，也继续更新进度
-      if (samplingElapsed < SAMPLING_DURATION) {
-        const progress = Math.min(100, Math.round((samplingElapsed / SAMPLING_DURATION) * 100));
-        updateDetectionStatus(`Analyzing... ${progress}%`);
-      }
+    } catch (error) {
+      console.error('Error detecting emotion:', error);
     }
 
-    // 使用 requestAnimationFrame 来确保更流畅的更新
     if (isDetectingRef.current) {
       requestAnimationFrame(detectEmotion);
     }
@@ -384,8 +357,25 @@ export default function Dashboard() {
   }, []); // 移除 videoRef.current 依赖
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-indigo-900">MoodTune Dashboard</h1>
+          {status === 'loading' ? (
+            <div className="text-gray-600">Loading...</div>
+          ) : session ? (
+            <div className="flex items-center space-x-4">
+              <img
+                src={session.user?.image || '/images/default-avatar.png'}
+                alt="User avatar"
+                className="w-10 h-10 rounded-full"
+              />
+              <span className="text-gray-700">{session.user?.name}</span>
+            </div>
+          ) : (
+            <SpotifyLogin />
+          )}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* 左侧：视频和检测控制 */}
           <div className="space-y-4">
@@ -402,6 +392,16 @@ export default function Dashboard() {
                   <div className="text-lg font-medium">
                     {detectionStatus}
                   </div>
+                  {!isAnalysisComplete && (
+                    <div className="mt-2 w-full bg-gray-200 rounded-full h-2.5">
+                      <div 
+                        className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                        style={{ 
+                          width: `${Math.min(100, Math.round((Date.now() - samplingStartTime.current) / SAMPLING_DURATION * 100))}%` 
+                        }}
+                      ></div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -483,8 +483,6 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-
-        {/* 移除底部的状态显示 */}
       </div>
     </div>
   )

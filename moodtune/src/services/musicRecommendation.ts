@@ -9,48 +9,52 @@ interface MusicTrack {
 
 export class MusicRecommendationService {
   private emotionToGenre: { [key: string]: string[] } = {
-    happy: ['pop', 'dance', 'electronic'],
-    sad: ['blues', 'jazz', 'classical'],
-    angry: ['rock', 'metal', 'punk'],
-    surprised: ['experimental', 'alternative', 'indie'],
-    fearful: ['ambient', 'new-age', 'instrumental'],
-    disgusted: ['industrial', 'noise', 'experimental'],
-    neutral: ['chill', 'lounge', 'acoustic']
+    happy: ['pop', 'dance', 'electronic', 'indie-pop'],
+    sad: ['blues', 'jazz', 'classical', 'soul'],
+    angry: ['rock', 'metal', 'punk', 'hard-rock'],
+    surprised: ['indie', 'alternative', 'experimental', 'art-pop'],
+    fearful: ['ambient', 'new-age', 'instrumental', 'classical'],
+    disgusted: ['industrial', 'metal', 'hard-rock', 'punk'],
+    neutral: ['chill', 'acoustic', 'indie', 'folk']
   };
 
-  private mockTracks: MusicTrack[] = [
-    {
-      id: '1',
-      title: 'Sunshine After Rain',
-      artist: 'Happy Vibes',
-      album: 'Positive Energy',
-      coverUrl: '/images/album1.jpg',
-      previewUrl: 'https://example.com/preview1.mp3'
-    },
-    {
-      id: '2',
-      title: 'Rainy Day Blues',
-      artist: 'Moody Tunes',
-      album: 'Emotional Journey',
-      coverUrl: '/images/album2.jpg',
-      previewUrl: 'https://example.com/preview2.mp3'
-    },
-    {
-      id: '3',
-      title: 'Rock Revolution',
-      artist: 'Power Band',
-      album: 'Energy Boost',
-      coverUrl: '/images/album3.jpg',
-      previewUrl: 'https://example.com/preview3.mp3'
-    }
-  ];
+  constructor(private accessToken: string) {}
 
   async getRecommendations(emotion: string): Promise<MusicTrack[]> {
-    // In a real application, this would call a music API
-    // For now, we'll return mock data based on emotion
-    const genres = this.emotionToGenre[emotion] || this.emotionToGenre.neutral;
-    return this.mockTracks.filter(track => 
-      genres.some(genre => track.title.toLowerCase().includes(genre))
-    );
+    try {
+      const genres = this.emotionToGenre[emotion] || this.emotionToGenre.neutral;
+      const randomGenre = genres[Math.floor(Math.random() * genres.length)];
+
+      console.log('Using genre:', randomGenre);
+
+      // 直接使用流派获取推荐
+      const response = await fetch(
+        `https://api.spotify.com/v1/recommendations?seed_genres=${randomGenre}&limit=5`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error('Spotify API response:', await response.text());
+        throw new Error(`Failed to fetch recommendations: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.tracks.map((track: any) => ({
+        id: track.id,
+        title: track.name,
+        artist: track.artists[0].name,
+        album: track.album.name,
+        coverUrl: track.album.images[0].url,
+        previewUrl: track.preview_url || '',
+      }));
+    } catch (error) {
+      console.error('Error fetching recommendations:', error);
+      return [];
+    }
   }
 } 
