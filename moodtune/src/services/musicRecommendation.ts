@@ -51,21 +51,21 @@ interface SpotifyDevice {
 export class MusicRecommendationService {
   private emotionToGenre: { [key: string]: string[] } = {
     happy: ['pop', 'dance', 'electronic'],
-    sad: ['acoustic', 'piano', 'ambient'],
-    angry: ['metal', 'rock', 'punk'],
+    sad: ['pop', 'indie', 'acoustic'],
+    angry: ['ambient', 'classical', 'acoustic'],
     surprised: ['indie', 'alternative', 'electronic'],
     fearful: ['ambient', 'classical', 'acoustic'],
-    disgusted: ['metal', 'rock', 'punk'],
+    disgusted: ['ambient', 'classical', 'acoustic'],
     neutral: ['acoustic', 'ambient', 'classical']
   };
 
   private emotionToQuery: { [key: string]: string[] } = {
     happy: ['happy pop', 'upbeat dance', 'party hits', 'summer hits', 'feel good music'],
-    sad: ['sad songs', 'emotional piano', 'heartbreak music', 'melancholic', 'tearjerker'],
-    angry: ['rock music', 'metal songs', 'aggressive music', 'hard rock', 'heavy metal'],
+    sad: ['uplifting songs', 'positive vibes', 'feel better music', 'motivational', 'happy acoustic'],
+    angry: ['calming music', 'peaceful songs', 'relaxing music', 'soothing', 'meditation'],
     surprised: ['new releases', 'trending music', 'indie hits', 'viral songs', 'popular now'],
-    fearful: ['calming music', 'soothing songs', 'ambient music', 'peaceful', 'meditation'],
-    disgusted: ['hard rock', 'metal music', 'aggressive songs', 'heavy metal', 'rock hits'],
+    fearful: ['calming music', 'soothing songs', 'peaceful music', 'relaxing', 'meditation'],
+    disgusted: ['calming music', 'peaceful songs', 'relaxing music', 'soothing', 'meditation'],
     neutral: ['chill music', 'study jazz', 'relaxing classical', 'background music', 'lo-fi']
   };
 
@@ -77,9 +77,11 @@ export class MusicRecommendationService {
 
   private availableGenres: string[] = [];
 
-  private player: any = null;
+  private player: Spotify.Player | null = null;
   private deviceId: string | null = null;
+  private playbackStateCallback: ((state: any) => void) | null = null;
   private isPremium: boolean = false;
+  private updateInterval: NodeJS.Timeout | null = null;
 
   constructor(private accessToken: string) {
     console.log('MusicRecommendationService initialized with access token:', accessToken ? 'Present' : 'Missing');
@@ -222,8 +224,33 @@ export class MusicRecommendationService {
   }
 
   private async initializePlayer() {
+    console.log('🎵 Starting player initialization...');
+    
+    // 确保SDK脚本已加载
+    if (!window.Spotify) {
+      console.log('🔄 Loading Spotify Web Playback SDK...');
+      return new Promise((resolve) => {
+        const script = document.createElement("script");
+        script.src = "https://sdk.scdn.co/spotify-player.js";
+        script.async = true;
+        document.body.appendChild(script);
+
+        window.onSpotifyWebPlaybackSDKReady = () => {
+          console.log('✅ Spotify Web Playback SDK is ready');
+          this.initializePlayerWithSDK().then(resolve);
+        };
+      });
+    } else {
+      console.log('✅ Spotify SDK is already available');
+      return this.initializePlayerWithSDK();
+    }
+  }
+
+  private async initializePlayerWithSDK() {
+    console.log('🎵 Initializing player with SDK...');
     // 检查用户是否为Premium用户
     try {
+      console.log('🔍 Checking Premium status...');
       const response = await fetch('https://api.spotify.com/v1/me', {
         headers: {
           'Authorization': this.accessToken
@@ -231,98 +258,155 @@ export class MusicRecommendationService {
       });
       
       if (!response.ok) {
-        console.error('Failed to check Premium status:', response.status);
+        console.error('❌ Failed to check Premium status:', response.status);
         return;
       }
       
       const userInfo = await response.json();
+      console.log('👤 User info:', {
+        id: userInfo.id,
+        product: userInfo.product,
+        display_name: userInfo.display_name
+      });
+      
       this.isPremium = userInfo.product === 'premium';
-      console.log('Is Premium?', this.isPremium);
+      console.log('🎵 Is Premium?', this.isPremium);
 
       if (!this.isPremium) {
-        console.warn('User is not a Premium subscriber. Web Playback SDK requires Premium.');
+        console.warn('⚠️ User is not a Premium subscriber. Web Playback SDK requires Premium.');
         return;
       }
 
-      // 初始化Web Playback SDK
-      const script = document.createElement("script");
-      script.src = "https://sdk.scdn.co/spotify-player.js";
-      script.async = true;
-      document.body.appendChild(script);
+      const token = this.accessToken.replace('Bearer ', '');
+      console.log('🔑 Initializing player with token:', token.substring(0, 10) + '...');
 
-      window.onSpotifyWebPlaybackSDKReady = () => {
-        const token = this.accessToken.replace('Bearer ', '');
-        console.log('Initializing player with token:', token.substring(0, 10) + '...');
+      this.player = new window.Spotify.Player({
+        name: 'MoodTune Player',
+        getOAuthToken: (callback: (token: string) => void) => { 
+          console.log('🔑 Getting OAuth token...');
+          callback(token); 
+        },
+        volume: 0.5
+      });
 
-        this.player = new window.Spotify.Player({
-          name: 'MoodTune Player',
-          getOAuthToken: (callback: (token: string) => void) => { 
-            console.log('Getting OAuth token...');
-            callback(token); 
-          },
-          volume: 0.5
-        });
+      // 错误处理
+      this.player.addListener('initialization_error', ({ message }: SpotifyError) => {
+        console.error('❌ Failed to initialize:', message);
+      });
+      this.player.addListener('authentication_error', ({ message }: SpotifyError) => {
+        console.error('❌ Failed to authenticate:', message);
+        window.location.href = '/api/auth/spotify';
+      });
+      this.player.addListener('account_error', ({ message }: SpotifyError) => {
+        console.error('❌ Failed to validate Spotify account:', message);
+      });
+      this.player.addListener('playback_error', ({ message }: SpotifyError) => {
+        console.error('❌ Failed to perform playback:', message);
+      });
 
-        // 错误处理
-        this.player.addListener('initialization_error', ({ message }: SpotifyError) => {
-          console.error('Failed to initialize:', message);
+      // 播放状态更新
+      this.player.addListener('player_state_changed', (state: SpotifyPlayerState) => {
+        console.log('🎵 Player state changed:', {
+          track: state?.track_window?.current_track?.name,
+          position: state?.position,
+          duration: state?.duration,
+          paused: state?.paused
         });
-        this.player.addListener('authentication_error', ({ message }: SpotifyError) => {
-          console.error('Failed to authenticate:', message);
-          window.location.href = '/api/auth/spotify';
-        });
-        this.player.addListener('account_error', ({ message }: SpotifyError) => {
-          console.error('Failed to validate Spotify account:', message);
-        });
-        this.player.addListener('playback_error', ({ message }: SpotifyError) => {
-          console.error('Failed to perform playback:', message);
-        });
+        if (this.playbackStateCallback) {
+          this.playbackStateCallback(state);
+        }
+      });
 
-        // 播放状态更新
-        this.player.addListener('player_state_changed', (state: SpotifyPlayerState) => {
-          console.log('Player state changed:', state);
-        });
+      // 准备就绪
+      this.player.addListener('ready', ({ device_id }: SpotifyDevice) => {
+        console.log('✅ Player is ready with Device ID:', device_id);
+        this.deviceId = device_id;
+      });
 
-        // 准备就绪
-        this.player.addListener('ready', ({ device_id }: SpotifyDevice) => {
-          console.log('Ready with Device ID', device_id);
-          this.deviceId = device_id;
-        });
-
-        // 连接播放器
-        this.player.connect().then((success: boolean) => {
-          if (success) {
-            console.log('Successfully connected to Spotify!');
-          } else {
-            console.error('Failed to connect to Spotify');
-          }
-        });
-      };
+      // 连接播放器
+      const success = await this.player.connect();
+      if (success) {
+        console.log('✅ Successfully connected to Spotify!');
+      } else {
+        console.error('❌ Failed to connect to Spotify');
+      }
     } catch (error) {
-      console.error('Error initializing player:', error);
+      console.error('❌ Error initializing player:', error);
+    }
+  }
+
+  // 设置播放状态回调
+  public setPlaybackStateCallback(callback: (state: any) => void) {
+    this.playbackStateCallback = callback;
+    // 启动定时更新
+    this.startPlaybackStateUpdates();
+  }
+
+  // 移除播放状态回调
+  public removePlaybackStateCallback() {
+    this.playbackStateCallback = null;
+    // 停止定时更新
+    this.stopPlaybackStateUpdates();
+  }
+
+  // 启动播放状态更新
+  private startPlaybackStateUpdates() {
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+    }
+    // 每100毫秒更新一次状态
+    this.updateInterval = setInterval(async () => {
+      if (this.player && this.playbackStateCallback) {
+        try {
+          const state = await this.player.getCurrentState();
+          if (state) {
+            this.playbackStateCallback(state);
+          }
+        } catch (error) {
+          console.error('Error getting current state:', error);
+        }
+      }
+    }, 100);
+  }
+
+  // 停止播放状态更新
+  private stopPlaybackStateUpdates() {
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
     }
   }
 
   async playTrack(track: MusicTrack) {
+    console.log('🎵 Attempting to play track:', {
+      title: track.title,
+      isPremium: this.isPremium,
+      deviceId: this.deviceId,
+      player: !!this.player
+    });
+
     if (!this.isPremium) {
-      console.warn('Cannot play track: Premium account required');
+      console.warn('❌ Cannot play track: Premium account required');
       throw new Error('Spotify Premium account required to play music');
     }
 
     if (!this.deviceId) {
-      console.warn('Cannot play track: Player not ready');
+      console.warn('❌ Cannot play track: Player not ready');
       throw new Error('Player not ready. Please wait a moment and try again');
     }
 
     if (!track.uri) {
-      console.warn('Cannot play track: No URI provided');
+      console.warn('❌ Cannot play track: No URI provided');
       throw new Error('Invalid track: No playback URI available');
     }
 
     try {
       const token = this.accessToken.replace('Bearer ', '');
-      console.log('Playing track:', track.title, 'on device:', this.deviceId);
-      console.log('Play URI:', track.uri);
+      console.log('🎵 Playing track:', {
+        title: track.title,
+        deviceId: this.deviceId,
+        uri: track.uri
+      });
 
       // 尝试最多3次播放
       let retryCount = 0;
@@ -331,6 +415,7 @@ export class MusicRecommendationService {
 
       while (retryCount < maxRetries) {
         try {
+          console.log(`🔄 Attempt ${retryCount + 1} to play track...`);
           const response = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${this.deviceId}`, {
             method: 'PUT',
             headers: {
@@ -343,31 +428,35 @@ export class MusicRecommendationService {
           });
 
           if (response.ok) {
-            console.log('Successfully started playback');
+            console.log('✅ Successfully started playback');
             return;
           }
 
           const errorText = await response.text();
-          console.error(`Failed to play track (attempt ${retryCount + 1}):`, response.status, errorText);
+          console.error(`❌ Failed to play track (attempt ${retryCount + 1}):`, {
+            status: response.status,
+            error: errorText
+          });
           
           if (response.status === 404) {
-            // 设备可能已断开连接，尝试重新初始化播放器
+            console.log('🔄 Device may be disconnected, reinitializing player...');
             await this.initializePlayer();
           }
           
           lastError = new Error(`Failed to play track: ${response.status} - ${errorText}`);
           retryCount++;
           
-          // 在重试之间添加延迟
           if (retryCount < maxRetries) {
+            console.log(`⏳ Waiting before retry ${retryCount + 1}...`);
             await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
           }
         } catch (error) {
-          console.error(`Error playing track (attempt ${retryCount + 1}):`, error);
+          console.error(`❌ Error playing track (attempt ${retryCount + 1}):`, error);
           lastError = error;
           retryCount++;
           
           if (retryCount < maxRetries) {
+            console.log(`⏳ Waiting before retry ${retryCount + 1}...`);
             await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
           }
         }
@@ -375,7 +464,7 @@ export class MusicRecommendationService {
 
       throw lastError || new Error('Failed to play track after multiple attempts');
     } catch (error) {
-      console.error('Error playing track:', error);
+      console.error('❌ Error playing track:', error);
       throw error;
     }
   }

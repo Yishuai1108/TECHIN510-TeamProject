@@ -53,7 +53,9 @@ export default function Dashboard() {
 
   const [currentTrack, setCurrentTrack] = useState<MusicTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(-1);
   const [hasInteracted, setHasInteracted] = useState(false);
 
   // 计算主要情绪
@@ -209,9 +211,21 @@ export default function Dashboard() {
     if (session?.accessToken) {
       console.log("✅ Access Token from session:", session.accessToken);
       musicService.current = new MusicRecommendationService(session.accessToken);
+      
+      // 设置播放状态回调
+      if (musicService.current) {
+        musicService.current.setPlaybackStateCallback(updatePlaybackProgress);
+      }
     } else {
       console.log("❌ No access token in session.");
     }
+
+    // 清理函数
+    return () => {
+      if (musicService.current) {
+        musicService.current.removePlaybackStateCallback();
+      }
+    };
   }, [session]);
 
   // 更新检测状态
@@ -366,8 +380,61 @@ export default function Dashboard() {
     }
   }, []); // 移除 videoRef.current 依赖
 
+  // 播放上一首
+  const handlePlayPrevious = async () => {
+    if (!musicService.current || currentTrackIndex <= 0) return;
+    
+    const previousTrack = recommendations[currentTrackIndex - 1];
+    setCurrentTrackIndex(currentTrackIndex - 1);
+    setCurrentTrack(previousTrack);
+    setIsPlaying(true);
+    await musicService.current.playTrack(previousTrack);
+  };
+
+  // 播放下一首
+  const handlePlayNext = async () => {
+    if (!musicService.current || currentTrackIndex >= recommendations.length - 1) return;
+    
+    const nextTrack = recommendations[currentTrackIndex + 1];
+    setCurrentTrackIndex(currentTrackIndex + 1);
+    setCurrentTrack(nextTrack);
+    setIsPlaying(true);
+    await musicService.current.playTrack(nextTrack);
+  };
+
+  // 更新播放进度
+  const updatePlaybackProgress = (state: any) => {
+    if (state) {
+      console.log('Playback state:', state);
+      setCurrentTime(state.position);
+      setDuration(state.duration);
+      setIsPlaying(!state.paused);
+    }
+  };
+
+  // 格式化时间
+  const formatTime = (ms: number) => {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  // 处理播放/暂停
+  const handlePlayPause = async () => {
+    if (!currentTrack) return;
+    
+    if (isPlaying) {
+      setIsPlaying(false);
+      await musicService.current?.pausePlayback();
+    } else {
+      setIsPlaying(true);
+      await musicService.current?.playTrack(currentTrack);
+    }
+  };
+
+  // 处理歌曲点击
   const handlePlayTrack = async (track: MusicTrack) => {
-    // 设置用户已交互
     setHasInteracted(true);
 
     if (!musicService.current) {
@@ -376,6 +443,8 @@ export default function Dashboard() {
     }
 
     try {
+      const index = recommendations.findIndex(t => t.id === track.id);
+      setCurrentTrackIndex(index);
       setCurrentTrack(track);
       setIsPlaying(true);
       await musicService.current.playTrack(track);
@@ -384,7 +453,6 @@ export default function Dashboard() {
       setIsPlaying(false);
       setCurrentTrack(null);
       
-      // 根据错误类型显示不同的提示
       if (error instanceof Error) {
         if (error.message.includes('Premium account required')) {
           alert('需要Spotify Premium账号才能播放音乐。请升级您的账号。');
@@ -401,34 +469,9 @@ export default function Dashboard() {
     }
   };
 
-  const handlePauseTrack = async () => {
-    if (!musicService.current) return;
-    try {
-      await musicService.current.pausePlayback();
-      setIsPlaying(false);
-    } catch (error) {
-      console.error('Error pausing track:', error);
-    }
-  };
-
-  // 更新播放控制函数
-  const handlePlayPause = () => {
-    if (!currentTrack) return;
-    if (isPlaying) {
-      // 暂停播放
-      setIsPlaying(false);
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-    } else {
-      // 开始播放
-      handlePlayTrack(currentTrack);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-indigo-900">MoodTune Dashboard</h1>
           {status === 'loading' ? (
@@ -566,6 +609,82 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* 固定在底部的播放控制栏 */}
+      {currentTrack && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex items-center justify-between">
+              {/* 歌曲信息 */}
+              <div className="flex items-center space-x-4">
+                <img
+                  src={currentTrack.coverUrl}
+                  alt={currentTrack.title}
+                  className="w-16 h-16 rounded"
+                />
+                <div>
+                  <h3 className="font-medium text-gray-900">{currentTrack.title}</h3>
+                  <p className="text-sm text-gray-600">{currentTrack.artist}</p>
+                </div>
+              </div>
+
+              {/* 播放控制 */}
+              <div className="flex items-center space-x-6">
+                <button
+                  onClick={handlePlayPrevious}
+                  className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
+                  title="上一首"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                
+                <button
+                  onClick={handlePlayPause}
+                  className="p-2 bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors"
+                  title={isPlaying ? "暂停" : "播放"}
+                >
+                  {isPlaying ? (
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  )}
+                </button>
+
+                <button
+                  onClick={handlePlayNext}
+                  className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
+                  title="下一首"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* 进度条 */}
+              <div className="flex-1 max-w-md">
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-gray-500">{formatTime(currentTime)}</span>
+                  <div className="flex-1 h-1 bg-gray-200 rounded-full">
+                    <div 
+                      className="h-full bg-green-500 rounded-full transition-all duration-300" 
+                      style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-xs text-gray-500">{formatTime(duration)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 } 
