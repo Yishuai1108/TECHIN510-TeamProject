@@ -4,5 +4,5 @@ export interface MusicTrack {
   artist: string;
   album: string;
   coverUrl: string;
-  previewUrl: string;
+  uri: string;
 } 

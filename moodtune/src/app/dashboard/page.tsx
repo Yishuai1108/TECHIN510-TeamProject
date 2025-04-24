@@ -10,7 +10,9 @@ import {
   FireIcon,
   BoltIcon,
   ExclamationTriangleIcon,
-  FaceSmileIcon as FaceMehIcon
+  FaceSmileIcon as FaceMehIcon,
+  PauseIcon,
+  PlayIcon
 } from '@heroicons/react/24/outline'
 import { MusicRecommendationService } from '@/services/musicRecommendation'
 import { MusicTrack } from '@/types/music'
@@ -48,6 +50,11 @@ export default function Dashboard() {
   const EMOTION_CHANGE_THRESHOLD = 0.3
   const MIN_CHANGE_INTERVAL = 10000
   const SAMPLING_DURATION = 3000
+
+  const [currentTrack, setCurrentTrack] = useState<MusicTrack | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   // 计算主要情绪
   const calculateDominantEmotion = (emotions: string[]): string => {
@@ -200,7 +207,10 @@ export default function Dashboard() {
   // 初始化音乐推荐服务
   useEffect(() => {
     if (session?.accessToken) {
+      console.log("✅ Access Token from session:", session.accessToken);
       musicService.current = new MusicRecommendationService(session.accessToken);
+    } else {
+      console.log("❌ No access token in session.");
     }
   }, [session]);
 
@@ -356,6 +366,66 @@ export default function Dashboard() {
     }
   }, []); // 移除 videoRef.current 依赖
 
+  const handlePlayTrack = async (track: MusicTrack) => {
+    // 设置用户已交互
+    setHasInteracted(true);
+
+    if (!musicService.current) {
+      console.warn('Cannot play track: Music service not initialized');
+      return;
+    }
+
+    try {
+      setCurrentTrack(track);
+      setIsPlaying(true);
+      await musicService.current.playTrack(track);
+    } catch (error: unknown) {
+      console.error('Error playing track:', error);
+      setIsPlaying(false);
+      setCurrentTrack(null);
+      
+      // 根据错误类型显示不同的提示
+      if (error instanceof Error) {
+        if (error.message.includes('Premium account required')) {
+          alert('需要Spotify Premium账号才能播放音乐。请升级您的账号。');
+        } else if (error.message.includes('Player not ready')) {
+          alert('播放器尚未准备就绪。请稍等片刻后重试。');
+        } else if (error.message.includes('No playback URI')) {
+          alert('无法播放此歌曲：无效的播放链接。');
+        } else {
+          alert('播放失败，请稍后重试。如果问题持续存在，请尝试刷新页面。');
+        }
+      } else {
+        alert('播放失败，请稍后重试。如果问题持续存在，请尝试刷新页面。');
+      }
+    }
+  };
+
+  const handlePauseTrack = async () => {
+    if (!musicService.current) return;
+    try {
+      await musicService.current.pausePlayback();
+      setIsPlaying(false);
+    } catch (error) {
+      console.error('Error pausing track:', error);
+    }
+  };
+
+  // 更新播放控制函数
+  const handlePlayPause = () => {
+    if (!currentTrack) return;
+    if (isPlaying) {
+      // 暂停播放
+      setIsPlaying(false);
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    } else {
+      // 开始播放
+      handlePlayTrack(currentTrack);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white p-8">
       <div className="max-w-7xl mx-auto">
@@ -466,16 +536,28 @@ export default function Dashboard() {
                   <div
                     key={track.id}
                     className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer"
-                    onClick={() => setSelectedTrack(track)}
+                    onClick={() => handlePlayTrack(track)}
                   >
-                    <img
-                      src={track.coverUrl}
-                      alt={track.title}
-                      className="w-16 h-16 rounded"
-                    />
+                    <div className="relative">
+                      <img
+                        src={track.coverUrl}
+                        alt={track.title}
+                        className="w-16 h-16 rounded"
+                      />
+                      <button
+                        className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded hover:bg-opacity-75 transition-opacity"
+                      >
+                        {currentTrack?.id === track.id && isPlaying ? (
+                          <PauseIcon className="w-6 h-6 text-white" />
+                        ) : (
+                          <PlayIcon className="w-6 h-6 text-white" />
+                        )}
+                      </button>
+                    </div>
                     <div>
                       <h3 className="font-medium">{track.title}</h3>
                       <p className="text-sm text-gray-600">{track.artist}</p>
+                      <p className="text-xs text-gray-500">{track.album}</p>
                     </div>
                   </div>
                 ))}

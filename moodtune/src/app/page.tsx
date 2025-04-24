@@ -1,8 +1,62 @@
+'use client';
+
 import Link from 'next/link'
 import Image from 'next/image'
 import { MusicalNoteIcon, FaceSmileIcon, ChartBarIcon } from '@heroicons/react/24/outline'
+import { useState, useEffect } from 'react';
+import { MusicRecommendationService } from '../services/musicRecommendation';
+
+interface MusicTrack {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  coverUrl: string;
+  uri: string;
+}
 
 export default function Home() {
+  const [musicService, setMusicService] = useState<MusicRecommendationService | null>(null);
+  const [currentTrack, setCurrentTrack] = useState<MusicTrack | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    // 初始化音乐服务
+    const token = localStorage.getItem('spotify_access_token');
+    if (token) {
+      setMusicService(new MusicRecommendationService(token));
+    }
+  }, []);
+
+  const handlePlayTrack = async (track: MusicTrack) => {
+    console.log('Attempting to play track:', track);
+    try {
+      if (!track.uri) {
+        console.error('No track URI available');
+        return;
+      }
+      
+      if (!musicService) {
+        console.error('Music service not initialized');
+        return;
+      }
+
+      // 检查用户是否已与页面交互
+      if (document.visibilityState === 'hidden') {
+        console.warn('Page is not visible. Please interact with the page first.');
+        return;
+      }
+
+      await musicService.playTrack(track);
+      setCurrentTrack(track);
+      setIsPlaying(true);
+    } catch (error) {
+      console.error('Error playing track:', error);
+      // 显示错误消息给用户
+      alert('Failed to play track. Please make sure you are logged in to Spotify Premium and have interacted with the page.');
+    }
+  };
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24 bg-gradient-to-b from-indigo-50 to-white">
       <div className="z-10 max-w-5xl w-full flex justify-center">
