@@ -18,6 +18,7 @@ import { MusicRecommendationService } from '@/services/musicRecommendation'
 import { MusicTrack } from '@/types/music'
 import { useSession } from 'next-auth/react'
 import SpotifyLogin from '@/components/SpotifyLogin'
+import Navigation from '@/components/Navigation'
 
 declare global {
   interface Window {
@@ -57,6 +58,10 @@ export default function Dashboard() {
   const [duration, setDuration] = useState(0);
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(-1);
   const [hasInteracted, setHasInteracted] = useState(false);
+
+  // 添加新的状态来跟踪进度条拖动
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragPosition, setDragPosition] = useState(0);
 
   // 计算主要情绪
   const calculateDominantEmotion = (emotions: string[]): string => {
@@ -435,42 +440,79 @@ export default function Dashboard() {
 
   // 处理歌曲点击
   const handlePlayTrack = async (track: MusicTrack) => {
-    setHasInteracted(true);
-
-    if (!musicService.current) {
-      console.warn('Cannot play track: Music service not initialized');
-      return;
-    }
-
     try {
-      const index = recommendations.findIndex(t => t.id === track.id);
-      setCurrentTrackIndex(index);
+      if (!musicService.current) {
+        console.error('Music service not initialized');
+        return;
+      }
+
+      // 如果点击的是当前正在播放的歌曲，则切换播放状态
+      if (currentTrack?.id === track.id) {
+        if (isPlaying) {
+          await musicService.current.pausePlayback();
+          setIsPlaying(false);
+        } else {
+          await musicService.current.playTrack(track);
+          setIsPlaying(true);
+        }
+        return;
+      }
+
+      // 如果是新歌曲，开始播放
+      await musicService.current.playTrack(track);
       setCurrentTrack(track);
       setIsPlaying(true);
-      await musicService.current.playTrack(track);
-    } catch (error: unknown) {
+    } catch (error) {
       console.error('Error playing track:', error);
-      setIsPlaying(false);
-      setCurrentTrack(null);
-      
       if (error instanceof Error) {
         if (error.message.includes('Premium account required')) {
-          alert('需要Spotify Premium账号才能播放音乐。请升级您的账号。');
+          alert('Please log in with a Spotify Premium account to play music.');
         } else if (error.message.includes('Player not ready')) {
-          alert('播放器尚未准备就绪。请稍等片刻后重试。');
-        } else if (error.message.includes('No playback URI')) {
-          alert('无法播放此歌曲：无效的播放链接。');
+          alert('Player is not ready yet. Please wait a moment and try again.');
+        } else if (error.message.includes('Invalid track')) {
+          alert('This track cannot be played. Please try another one.');
         } else {
-          alert('播放失败，请稍后重试。如果问题持续存在，请尝试刷新页面。');
+          alert('Failed to play track. Please try again.');
         }
-      } else {
-        alert('播放失败，请稍后重试。如果问题持续存在，请尝试刷新页面。');
       }
     }
   };
 
+  // 处理进度条拖动开始
+  const handleDragStart = () => {
+    setIsDragging(true);
+  };
+
+  // 处理进度条拖动结束
+  const handleDragEnd = async () => {
+    if (!musicService.current || !currentTrack) return;
+    
+    try {
+      // 计算新的播放位置（毫秒）
+      const newPosition = Math.round((dragPosition / 100) * duration);
+      await musicService.current.seekToPosition(newPosition);
+      setCurrentTime(newPosition);
+    } catch (error) {
+      console.error('Error seeking to position:', error);
+    }
+    
+    setIsDragging(false);
+  };
+
+  // 处理进度条拖动
+  const handleDrag = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    
+    const progressBar = e.currentTarget;
+    const rect = progressBar.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+    setDragPosition(percentage);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
+      <Navigation />
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-indigo-900">MoodTune Dashboard</h1>
@@ -670,13 +712,28 @@ export default function Dashboard() {
 
               {/* 进度条 */}
               <div className="flex-1 max-w-md">
-                <div className="flex items-center space-x-2">
+                <div 
+                  className="flex items-center space-x-2 cursor-pointer"
+                  onMouseDown={handleDragStart}
+                  onMouseMove={handleDrag}
+                  onMouseUp={handleDragEnd}
+                  onMouseLeave={handleDragEnd}
+                >
                   <span className="text-xs text-gray-500">{formatTime(currentTime)}</span>
-                  <div className="flex-1 h-1 bg-gray-200 rounded-full">
+                  <div className="flex-1 h-1 bg-gray-200 rounded-full relative">
                     <div 
                       className="h-full bg-green-500 rounded-full transition-all duration-300" 
-                      style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
-                    ></div>
+                      style={{ 
+                        width: `${isDragging ? dragPosition : (duration > 0 ? (currentTime / duration) * 100 : 0)}%` 
+                      }}
+                    />
+                    <div 
+                      className="absolute top-1/2 transform -translate-y-1/2 w-3 h-3 bg-green-500 rounded-full shadow cursor-pointer"
+                      style={{ 
+                        left: `${isDragging ? dragPosition : (duration > 0 ? (currentTime / duration) * 100 : 0)}%`,
+                        transform: 'translate(-50%, -50%)'
+                      }}
+                    />
                   </div>
                   <span className="text-xs text-gray-500">{formatTime(duration)}</span>
                 </div>

@@ -1,36 +1,134 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MoodTune - Emotion-Based Music Recommendation System
 
-## Getting Started
+MoodTune is an intelligent music recommendation system developed with Next.js that analyzes users' facial expressions to recommend music matching their current mood.
 
-First, run the development server:
+## Features
 
+- Real-time facial emotion recognition
+- Emotion-based intelligent music recommendations
+- Music playback using Spotify Web Playback SDK
+- Playback controls (play/pause, previous/next)
+- Real-time playback progress display
+
+## Requirements
+
+- Node.js 18.0.0 or higher
+- npm or yarn package manager
+- Spotify Premium account (for music playback functionality)
+- ngrok (for local development)
+
+## Installation
+
+1. Clone the repository:
+```bash
+git clone [repository-url]
+cd moodtune
+```
+
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+```
+
+3. Install ngrok:
+```bash
+npm install -g ngrok
+# or
+brew install ngrok
+```
+
+4. Configure environment variables:
+Create a `.env.local` file in the project root directory with the following content:
+```env
+NEXT_PUBLIC_SPOTIFY_CLIENT_ID=your-spotify-client-id
+NEXT_PUBLIC_SPOTIFY_REDIRECT_URI=http://localhost:3000/api/auth/callback
+```
+
+5. Configure Spotify Developer Dashboard:
+- Log in to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+- Create a new application
+- Set the redirect URI to `http://localhost:3000/api/auth/callback`
+- Get the Client ID and add it to the `.env.local` file
+
+## Running the Project
+
+1. Start the development server:
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. In a new terminal, start ngrok:
+```bash
+ngrok http 3000
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Update Spotify Developer Dashboard:
+- Copy the HTTPS URL provided by ngrok (e.g., `https://xxxx-xx-xx-xxx-xx.ngrok.io`)
+- Add this URL to your Spotify app's redirect URIs in the Developer Dashboard
+- Update the `NEXT_PUBLIC_SPOTIFY_REDIRECT_URI` in `.env.local` to match the ngrok URL
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Access in your browser:
+```
+https://xxxx-xx-xx-xxx-xx.ngrok.io
+```
 
-## Learn More
+5. Usage Instructions:
+- First-time access requires Spotify account login
+- Ensure you're using a Spotify Premium account for full functionality
+- Allow browser access to camera for emotion recognition
+- Click "Start Detection" to begin emotion analysis
+- System will recommend music based on detected emotions
+- Click on recommended songs to start playback
 
-To learn more about Next.js, take a look at the following resources:
+## Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+moodtune/
+├── src/
+│   ├── app/              # Next.js app routing
+│   ├── components/       # React components
+│   ├── services/         # Service layer (music recommendation, emotion detection)
+│   └── utils/            # Utility functions
+├── public/               # Static assets
+└── package.json          # Project dependencies
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Tech Stack
 
-## Deploy on Vercel
+- Next.js 14
+- React
+- TypeScript
+- Spotify Web Playback SDK
+- Face-API.js (emotion detection)
+- Tailwind CSS
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Notes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Ensure using HTTPS or localhost environment
+- Stable internet connection required for Spotify API access
+- Chrome browser recommended for optimal experience
+- First-time use may require camera and microphone access permissions
+
+## FAQ
+
+1. Music won't play?
+   - Verify Spotify Premium account login
+   - Check internet connection
+   - Try refreshing the page and logging in again
+
+2. Emotion detection not accurate?
+   - Ensure good lighting conditions
+   - Keep face within camera frame
+   - Avoid rapid movements
+
+## Contributing
+
+Issues and Pull Requests are welcome to help improve the project.
+
+## License
+
+MIT License

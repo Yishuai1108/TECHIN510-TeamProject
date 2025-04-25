@@ -25,6 +25,7 @@ interface SpotifyPlayer {
   connect: () => Promise<boolean>;
   addListener: (event: string, callback: (data: any) => void) => void;
   disconnect: () => void;
+  seek: (positionMs: number) => Promise<void>;
 }
 
 interface SpotifyError {
@@ -514,64 +515,73 @@ export class MusicRecommendationService {
   }
 
   private async fetchRecommendations(query: string): Promise<MusicTrack[]> {
-    console.log(`🔍 Searching for query: ${query}`);
-    const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=50&market=US`;
-    
     try {
-      // 验证token
-      const userResponse = await fetch('https://api.spotify.com/v1/me', {
-        headers: {
-          'Authorization': this.accessToken
-        }
-      });
-      
-      if (!userResponse.ok) {
-        if (userResponse.status === 401) {
-          console.error('❌ Access token expired or invalid. Please re-authenticate with Spotify.');
-          // 触发重新认证
-          window.location.href = '/api/auth/spotify';
-          throw new Error('Access token expired. Redirecting to login...');
-        }
-        throw new Error(`Access token validation failed with status ${userResponse.status}. Please re-authenticate.`);
+      if (!this.accessToken) {
+        console.error('No access token available');
+        return [];
       }
 
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': this.accessToken,
-          'Content-Type': 'application/json'
+      console.log('Fetching recommendations for query:', query);
+      const response = await fetch(
+        `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=50`,
+        {
+          headers: {
+            Authorization: this.accessToken,
+            'Content-Type': 'application/json',
+          },
         }
-      });
+      );
 
       if (!response.ok) {
-        throw new Error(`Search API error: ${response.status} ${response.statusText}`);
+        console.error('Search API request failed:', response.status, response.statusText);
+        return [];
       }
 
       const data = await response.json();
-      const tracks = data.tracks.items;
+      console.log('Search API response:', data);
 
-      if (!tracks || tracks.length === 0) {
-        throw new Error('No tracks found');
+      if (!data.tracks || !data.tracks.items || data.tracks.items.length === 0) {
+        console.log('No tracks found in search results');
+        return [];
       }
 
-      // 过滤并转换歌曲数据
-      const validTracks = tracks
-        .filter((track: any) => track.artists && track.artists.length > 0)
-        .map((track: any) => ({
-          id: track.id,
-          title: track.name,
-          artist: track.artists[0].name,
-          album: track.album.name,
-          coverUrl: track.album.images[0]?.url || '',
-          uri: track.uri
-        }));
+      // 处理所有找到的歌曲
+      const allTracks = data.tracks.items.map((track: any) => ({
+        id: track.id,
+        title: track.name,
+        artist: track.artists[0]?.name || 'Unknown Artist',
+        album: track.album?.name || 'Unknown Album',
+        coverUrl: track.album?.images[0]?.url || '',
+        uri: track.uri,
+      }));
 
-      if (validTracks.length === 0) {
-        throw new Error('No valid tracks found');
-      }
+      // 随机选择10首歌曲
+      const shuffledTracks = allTracks.sort(() => Math.random() - 0.5);
+      const selectedTracks = shuffledTracks.slice(0, 10);
 
-      return validTracks;
+      console.log('Total tracks found:', allTracks.length);
+      console.log('Randomly selected tracks:', selectedTracks.length);
+      return selectedTracks;
     } catch (error) {
-      console.error('Error fetching recommendations:', error);
+      console.error('Error in fetchRecommendations:', error);
+      return [];
+    }
+  }
+
+  public async seekToPosition(positionMs: number): Promise<void> {
+    try {
+      if (!this.accessToken) {
+        throw new Error('No access token available');
+      }
+
+      if (!this.player) {
+        throw new Error('Player not ready');
+      }
+
+      await this.player.seek(positionMs);
+      console.log('Seeked to position:', positionMs);
+    } catch (error) {
+      console.error('Error seeking to position:', error);
       throw error;
     }
   }
