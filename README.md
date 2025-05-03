@@ -1,7 +1,7 @@
 # 🎵 MoodTune: Emotion-Based Music Recommendation Web App
 
 ## Project Scope  
-**MoodTune** is a web-based application that detects users' facial emotions in real time and recommends personalized music playlists based on their current mood. By combining facial emotion detection with the Music API(e.g. Apple Music), the platform enhances emotional well-being through tailored music experiences. Additional features include mood tracking, user customization, and a social sharing community.
+**MoodTune** is a web-based application that detects users' facial emotions in real time and recommends personalized music playlists based on their current mood. By combining facial emotion detection with the Spotify API, the platform enhances emotional well-being through tailored music experiences. Additional features include mood tracking, user customization, and a social sharing community.
 
 Main components:
 - Real-time facial emotion detection system
@@ -19,42 +19,38 @@ MoodTune is designed for:
 
 ## Features  
 - **Facial Emotion Detection**: Real-time emotion recognition using face-api.js via camera.  
-- **Smart Music Recommendation**: Personalized playlists based on the user's mood using mock data.  
+- **Smart Music Recommendation**: Personalized playlists based on the user's mood using Spotify API.  
 - **Mood Smoothing**: Algorithm to stabilize mood fluctuations and prevent frequent playlist changes.  
 - **Custom Detection Intervals**: Users can choose how often to detect emotions and update music.  
 - **Mood and Music Dashboard**: Visualizes daily and weekly emotional trends along with music history.   
 - **Community Sharing**: Share mood trends and playlists with friends, explore others' moods and songs.  
+- **Music Playback & Controls**: Web-based playback using Spotify Web Playback SDK, including play/pause, next/previous, and draggable progress bar.
+- **Modern Responsive UI**: Built with Tailwind CSS, features a fixed bottom player, card-style recommendations, and a top navigation bar.
+- **User Authentication**: Spotify login and token management.
 
 ## Project Progress
 ### Completed Features
 - ✅ Basic project structure setup
-- ✅ Virtual environment configuration
+- ✅ Local development environment setup
 - ✅ Homepage implementation with modern UI
 - ✅ Real-time facial emotion detection using face-api.js
 - ✅ Emotion-to-music mapping system
-- ✅ Basic music recommendation engine
+- ✅ Music recommendation engine (Spotify API)
 - ✅ Dashboard with emotion detection and music display
-- ✅ Local development environment setup
+- ✅ Music playback and controls (Spotify Web Playback SDK)
+- ✅ Navigation bar for page switching
+- ✅ Progress bar with drag-to-seek support
 
 ### In Progress
-- 🔄 Integration with music API (e.g., Apple Music)
-- 🔄 User authentication system
-- 🔄 Mood tracking and history visualization
+- 🔄 User settings
 - 🔄 Community sharing features
-- 🔄 Advanced music recommendation algorithms
 
-### Upcoming Features
-- ⏳ Social sharing functionality
-- ⏳ Advanced mood analytics
-- ⏳ User profile customization
-- ⏳ Mobile responsiveness optimization
-- ⏳ Performance improvements
 
 ## Timeline  
 | Phase | Task | Duration | Status |
 |-------|------|----------|--------|
 | Phase 1 | Design the emotion detection system | Week 1–2 | ✅ Completed |
-| Phase 2 | Build core features and UI prototype | Week 3–4 | ✅ 50% Completed |
+| Phase 2 | Build core features and UI prototype | Week 3–4 | ✅ Completed |
 | Phase 3 | Test and iterate | Week 5 | 🔄 In Progress |
 | Phase 4 | UI polish and frontend integration | Week 6 | ⏳ Upcoming |
 | Phase 5 | Final development and deployment | Week 7–8 | ⏳ Upcoming |
@@ -68,14 +64,19 @@ MoodTune is designed for:
 
 ### Music Recommendation
 - Emotion-to-genre mapping system
-- Mock data implementation for testing
-- Ready for integration with music APIs
+- Spotify API integration for real music data
+- Each recommendation: 10 random tracks from 50 candidates
+
+### Music Playback
+- Spotify Web Playback SDK integration
+- Play/pause, next/previous, and draggable progress bar
+- Fixed bottom player UI
 
 ### Development Environment
 - Next.js for frontend framework
 - TypeScript for type safety
 - Tailwind CSS for styling
-- Face-api.js for emotion detection
+- face-api.js for emotion detection
 - Local development server support
 
 ## Contact Information of the Team
