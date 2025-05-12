@@ -28,6 +28,7 @@ declare global {
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
+  console.log('Dashboard session:', session, 'status:', status, 'provider:', session?.provider);
   const [isDetecting, setIsDetecting] = useState(false)
   const [currentEmotion, setCurrentEmotion] = useState<string>('Not Detected')
   const [recommendations, setRecommendations] = useState<MusicTrack[]>([])
@@ -185,19 +186,19 @@ export default function Dashboard() {
             setIsFaceApiReady(true)
           } catch (error: any) {
             console.error('Error loading models:', error)
-            setError(`Failed to load models: ${error.message}`)
+            setError(typeof error === 'string' ? error : String(error))
           }
         }
 
         script.onerror = (error) => {
           console.error('Failed to load face-api.js:', error)
-          setError('Failed to load face-api.js')
+          setError(typeof error === 'string' ? error : String(error))
         }
 
         document.body.appendChild(script)
       } catch (error: any) {
         console.error('Error in loadFaceApi:', error)
-        setError(`Failed to load face-api.js: ${error.message}`)
+        setError(typeof error === 'string' ? error : String(error))
       }
     }
 
@@ -273,11 +274,11 @@ export default function Dashboard() {
               setRecommendations(recommendations);
             } catch (error) {
               console.error('Error getting recommendations:', error);
-              setError('Failed to get music recommendations. Please try again.');
+              setError(typeof error === 'string' ? error : String(error));
             }
           } else {
             console.error('Music service or access token not available');
-            setError('Spotify connection not available. Please log in again.');
+            setError(typeof error === 'string' ? error : String(error));
           }
           
           // 分析完成后自动停止检测
@@ -302,6 +303,7 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error('Error detecting emotion:', error);
+      setError(typeof error === 'string' ? error : String(error));
     }
 
     if (isDetectingRef.current) {
@@ -359,7 +361,7 @@ export default function Dashboard() {
       requestAnimationFrame(detectEmotion);
     } catch (error: any) {
       console.error('Error accessing camera:', error);
-      setError(`Error accessing camera: ${error.message}`);
+      setError(typeof error === 'string' ? error : String(error));
       setIsLoading(false);
       setIsDetecting(false);
       isDetectingRef.current = false;
@@ -475,6 +477,7 @@ export default function Dashboard() {
           alert('Failed to play track. Please try again.');
         }
       }
+      setError(typeof error === 'string' ? error : String(error));
     }
   };
 
@@ -494,6 +497,7 @@ export default function Dashboard() {
       setCurrentTime(newPosition);
     } catch (error) {
       console.error('Error seeking to position:', error);
+      setError(typeof error === 'string' ? error : String(error));
     }
     
     setIsDragging(false);
@@ -510,6 +514,18 @@ export default function Dashboard() {
     setDragPosition(percentage);
   };
 
+  useEffect(() => {
+    console.log('==== MoodTune Debug Info (Dashboard) ====');
+    console.log('Session:', session);
+    console.log('Status:', status);
+    console.log('Provider:', session?.provider);
+    console.log('AccessToken:', session?.accessToken);
+    console.log('User:', session?.user);
+    console.log('Document.cookie:', document.cookie);
+    console.log('Location:', window.location.href);
+    console.log('==========================================');
+  }, [session, status]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
@@ -521,11 +537,13 @@ export default function Dashboard() {
           ) : session ? (
             <div className="flex items-center space-x-4">
               <img
-                src={session.user?.image || '/images/default-avatar.png'}
+                src={session.user?.image || '/images/default-avatar.svg'}
                 alt="User avatar"
                 className="w-10 h-10 rounded-full"
               />
               <span className="text-gray-700">{session.user?.name}</span>
+              {/* 如果还没绑定 Spotify，显示按钮 */}
+              {session.provider !== 'spotify' && <SpotifyLogin />}
             </div>
           ) : (
             <SpotifyLogin />
@@ -741,6 +759,10 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {typeof error === 'string' && error && (
+        <div className="text-red-500 mt-2">{error}</div>
       )}
     </div>
   )

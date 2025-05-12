@@ -59,10 +59,18 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24 bg-gradient-to-b from-indigo-50 to-white">
-      <div className="z-10 max-w-5xl w-full flex justify-center">
+      <div className="z-10 max-w-5xl w-full flex flex-col items-center">
         <h1 className="text-4xl font-bold text-center mb-8 text-indigo-900">
           Welcome to MoodTune
         </h1>
+        <div className="flex space-x-4 mb-8">
+          <Link href="/login" legacyBehavior passHref>
+            <a className="bg-indigo-600 text-white px-6 py-2 rounded text-lg font-semibold shadow hover:bg-indigo-700 transition inline-block">Login</a>
+          </Link>
+          <Link href="/register" legacyBehavior passHref>
+            <a className="bg-gray-200 text-gray-800 px-6 py-2 rounded text-lg font-semibold shadow hover:bg-gray-300 transition inline-block">Register</a>
+          </Link>
+        </div>
       </div>
 
       <div className="relative flex place-items-center">
@@ -83,34 +91,36 @@ export default function Home() {
             Discover the perfect soundtrack for your mood through real-time facial expression analysis
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Link
-              href="/dashboard"
-              className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-indigo-300 hover:bg-indigo-50"
-            >
-              <h2 className="mb-3 text-2xl font-semibold text-indigo-900">
-                Get Started
-                <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-                  -&gt;
-                </span>
-              </h2>
-              <p className="m-0 max-w-[30ch] text-sm opacity-50">
-                Start emotion detection and music recommendations
-              </p>
+            <Link href="/login" legacyBehavior passHref>
+              <a className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-indigo-300 hover:bg-indigo-50">
+                <div>
+                  <h2 className="mb-3 text-2xl font-semibold text-indigo-900">
+                    Get Started
+                    <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
+                      -&gt;
+                    </span>
+                  </h2>
+                  <p className="m-0 max-w-[30ch] text-sm opacity-50">
+                    Start emotion detection and music recommendations
+                  </p>
+                </div>
+              </a>
             </Link>
 
-            <Link
-              href="/community"
-              className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-indigo-300 hover:bg-indigo-50"
-            >
-              <h2 className="mb-3 text-2xl font-semibold text-indigo-900">
-                Community
-                <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-                  -&gt;
-                </span>
-              </h2>
-              <p className="m-0 max-w-[30ch] text-sm opacity-50">
-                Explore other users' moods and music shares
-              </p>
+            <Link href="/community" legacyBehavior passHref>
+              <a className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-indigo-300 hover:bg-indigo-50">
+                <div>
+                  <h2 className="mb-3 text-2xl font-semibold text-indigo-900">
+                    Community
+                    <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
+                      -&gt;
+                    </span>
+                  </h2>
+                  <p className="m-0 max-w-[30ch] text-sm opacity-50">
+                    Explore other users' moods and music shares
+                  </p>
+                </div>
+              </a>
             </Link>
           </div>
         </div>
