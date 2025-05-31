@@ -11,12 +11,16 @@
     "start": "cd moodtune && npm run start",
     "lint": "cd moodtune && npm run lint"
   },
+  
   "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "next": "13.4.19",
-    "react": "18.2.0",
-    "react-dom": "18.2.0"
-  },
+  "bcryptjs": "^2.4.3",
+  "next": "13.4.19",
+  "react": "18.2.0",
+  "react-dom": "18.2.0",
+  "@tensorflow/tfjs": "^4.0.0",
+  "@tensorflow-models/facemesh": "^0.0.4"
+},
+
   "devDependencies": {
     "@prisma/client": "^6.7.0",
     "prisma": "^6.7.0"
