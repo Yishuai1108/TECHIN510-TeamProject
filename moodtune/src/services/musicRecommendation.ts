@@ -1,3 +1,5 @@
+/// <reference types="spotify-web-playback-sdk" />
+
 interface MusicTrack {
   id: string;
   title: string;
@@ -5,20 +7,6 @@ interface MusicTrack {
   album: string;
   coverUrl: string;
   uri: string;
-}
-
-// 添加Spotify Web Playback SDK的类型定义
-declare global {
-  interface Window {
-    onSpotifyWebPlaybackSDKReady: () => void;
-    Spotify: {
-      Player: new (config: {
-        name: string;
-        getOAuthToken: (callback: (token: string) => void) => void;
-        volume?: number;
-      }) => SpotifyPlayer;
-    };
-  }
 }
 
 interface SpotifyPlayer {

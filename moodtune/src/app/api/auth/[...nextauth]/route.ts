@@ -20,7 +20,7 @@ const handler = NextAuth({
         if (!user) return null;
         const isValid = await bcrypt.compare(credentials.password, user.password);
         if (!isValid) return null;
-        return { id: user.id, email: user.email, name: user.name, provider: 'credentials' };
+        return { id: String(user.id), email: user.email, name: user.name, provider: 'credentials' };
       }
     }),
     SpotifyProvider({
