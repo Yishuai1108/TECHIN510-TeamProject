@@ -1,20 +1,26 @@
 import { NextResponse } from 'next/server'
-import * as tf from '@tensorflow/tfjs'
-import * as facemesh from '@tensorflow-models/facemesh'
-import * as faceapi from '@tensorflow-models/face-expression-recognition'
+// import * as tf from '@tensorflow/tfjs'
+// import * as facemesh from '@tensorflow-models/facemesh'
+// import * as faceapi from '@tensorflow-models/face-expression-recognition'
 
 // 加载模型
-let faceMeshModel: facemesh.FaceMesh | null = null
-let emotionModel: faceapi.FaceExpressionModel | null = null
+// let faceMeshModel: facemesh.FaceMesh | null = null
+// let emotionModel: faceapi.FaceExpressionModel | null = null
+
+// if (!faceMeshModel || !emotionModel) {
+//   await tf.ready()
+//   faceMeshModel = await facemesh.load()
+//   emotionModel = await faceapi.load()
+// }
 
 export async function POST() {
   try {
     // 如果模型未加载，则加载模型
-    if (!faceMeshModel || !emotionModel) {
-      await tf.ready()
-      faceMeshModel = await facemesh.load()
-      emotionModel = await faceapi.load()
-    }
+    // if (!faceMeshModel || !emotionModel) {
+    //   await tf.ready()
+    //   faceMeshModel = await facemesh.load()
+    //   emotionModel = await faceapi.load()
+    // }
 
     // 模拟情绪检测结果（暂时使用模拟数据，后续可以替换为实际检测）
     const emotions = ['happy', 'sad', 'angry', 'neutral', 'surprised', 'fear', 'disgust']
