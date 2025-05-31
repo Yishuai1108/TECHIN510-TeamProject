@@ -1,0 +1,24 @@
+{
+  "name": "techin510-teamproject",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "moodtune"
+  ],
+  "scripts": {
+    "dev": "cd moodtune && npm run dev",
+    "build": "cd moodtune && npm run build",
+    "start": "cd moodtune && npm run start",
+    "lint": "cd moodtune && npm run lint"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "next": "13.4.19",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
+  "devDependencies": {
+    "@prisma/client": "^6.7.0",
+    "prisma": "^6.7.0"
+  }
+}
