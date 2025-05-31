@@ -1,7 +1,4 @@
 import { NextResponse } from 'next/server'
-// import * as tf from '@tensorflow/tfjs'
-// import * as facemesh from '@tensorflow-models/facemesh'
-// import * as faceapi from '@tensorflow-models/face-expression-recognition'
 
 // 加载模型
 // let faceMeshModel: facemesh.FaceMesh | null = null
