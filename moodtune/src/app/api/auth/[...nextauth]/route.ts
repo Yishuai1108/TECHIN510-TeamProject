@@ -6,7 +6,11 @@ import bcrypt from 'bcryptjs';
 
 console.log('ENV:', process.env);
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  datasources: {
+    db: { url: process.env.DATABASE_URL },
+  },
+});
 
 const handler = NextAuth({
   providers: [
